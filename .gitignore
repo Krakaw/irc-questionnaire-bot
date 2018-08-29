@@ -5,3 +5,4 @@ node_modules
 .vscode
 questions.json
 users.json
+answers.txt

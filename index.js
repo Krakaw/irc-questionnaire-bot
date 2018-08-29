@@ -15,6 +15,7 @@ const FINAL_MESSAGE = process.env.FINAL_MESSAGE || '';
 
 const USER_FILE_PATH = process.env.USERS_FILE || 'users.json';
 const QUESTION_FILE_PATH = process.env.QUESTIONS_FILE || 'questions.json';
+const ANSWER_FILE_PATH = process.env.ANSWERS_FILE || 'answers.txt';
 
 const COMMAND_JOIN = process.env.COMMAND_JOIN;
 const COMMAND_START = process.env.COMMAND_START;
@@ -40,23 +41,56 @@ const client = new irc.Client(IRC_SERVER, IRC_NICK, {
 client.addListener('message', function (from, to, message) {
     // console.log(from + ' => ' + to + ': ' + message);
 
-    if (from === IRC_ADMIN_NICK && message === COMMAND_START) {
-        startQuestions();
-    } else if (
-        to === process.env.IRC_NICK
-        && users.indexOf(from) > -1
-        && responses.hasOwnProperty(from)) {
-        addAnswer(from, message);
-    } else if (message === COMMAND_JOIN) {
-        addRemoveUser(from);
-    } else if (from === IRC_ADMIN_NICK && message.indexOf(`${COMMAND_ADD_QUESTION} `) === 0) {
-        addQuestion(message.replace(`${COMMAND_ADD_QUESTION} `, ''));
+    //Admin only commands
+    if (from === IRC_ADMIN_NICK && message[0] === '!') {
+        //Get answers from all users
+        if (message.indexOf(COMMAND_START) === 0) {
+            let startCommands = message.split(' ');
+            //There is only the command, so run it for all the users
+            if (startCommands.length === 1) {
+                startQuestions(users);
+            } else {
+                //Run it for these specific users
+                startCommands.splice(0,1);
+                startQuestions(startCommands);
+            }
+        }
+
+        if (message.indexOf(`${COMMAND_ADD_QUESTION} `) === 0) {
+            //Add a new question
+            storeQuestion(message.replace(`${COMMAND_ADD_QUESTION} `, ''));
+        }
+
+    } else {
+        //Public commands
+
+        if (
+            to === process.env.IRC_NICK
+            && users.indexOf(from) > -1
+            && responses.hasOwnProperty(from)) {
+            //This is a message to the bot from someone in our user list
+            addAnswer(from, message);
+        } else if (message === COMMAND_JOIN) {
+            //Someone has sent the join command
+            addRemoveUser(from);
+        }
     }
+
 
 });
 
 client.addListener('error', function (message) {
     console.log('error: ', message);
+    if (message.command === 'err_nosuchnick') {
+        const user = message.args[1];
+        console.log(`${user} not online at ${new Date()}`);
+        try {
+
+            delete responses[user];
+        }catch(e) {
+
+        }
+    }
 });
 
 client.connect(0, () => {
@@ -64,7 +98,7 @@ client.connect(0, () => {
 });
 
 
-function startQuestions() {
+function startQuestions(users) {
     responses = {};
     users.forEach(user => {
         startQuestionsForUser(user);
@@ -97,10 +131,11 @@ function addAnswer(user, answer) {
                 return;
             } else {
                 if (FINAL_MESSAGE) {
-
                     client.say(user, FINAL_MESSAGE);
                 }
+                console.log(`${new Date()} - Storing ${user} answers`);
                 postToChannel(user);
+                storeAnswer(user);
             }
         }
     }
@@ -134,9 +169,10 @@ function addRemoveUser(user) {
     });
 }
 
-function addQuestion(question) {
+function storeQuestion(question) {
     questions.push(question);
-    fs.writeFile(QUESTION_FILE_PATH, JSON.stringify(questions), function (err) {
+
+    fs.writeFile(QUESTION_FILE_PATH,  JSON.stringify(questions), function (err) {
         if (err) {
             console.error(err);
         }
@@ -144,6 +180,16 @@ function addQuestion(question) {
     });
 }
 
+function storeAnswer(user) {
+    let storeData = Object.assign({}, responses[user]);
+    storeData.date = new Date();
+    storeData.user = user;
+    fs.appendFile(ANSWER_FILE_PATH, JSON.stringify(storeData) + "\n", function (err) {
+        if (err) {
+            console.error(err);
+        }
+    });
+}
 function readQuestions() {
     return readJsonFile(QUESTION_FILE_PATH, [])
 }
@@ -159,7 +205,6 @@ function readJsonFile(filePath, defaultResult) {
         }
         let content = fs.readFileSync(filePath, {encoding: 'utf8'});
         if (content) {
-
             return JSON.parse(content);
         }
         return defaultResult;
