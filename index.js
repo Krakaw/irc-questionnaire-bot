@@ -1,12 +1,14 @@
 const fs = require('fs');
 require('dotenv').config();
-const irc = require('index');
+const irc = require('irc');
 
 const IRC_SERVER = process.env.IRC_SERVER;
 const IRC_NICK = process.env.IRC_NICK;
 const IRC_PASS = process.env.IRC_PASS;
 const IRC_ADMIN_NICK = process.env.IRC_ADMIN_NICK;
 const IRC_PUBLIC_CHANNEL = process.env.IRC_PUBLIC_CHANNEL;
+
+const BOT_NAME = process.env.BOT_NAME || 'Questionnaire Bot';
 
 const RESULTS_START_MESSAGE = process.env.RESULTS_START_MESSAGE;
 const FINAL_MESSAGE = process.env.FINAL_MESSAGE || '';
@@ -29,6 +31,7 @@ const client = new irc.Client(IRC_SERVER, IRC_NICK, {
     userName: IRC_NICK,
     password: IRC_PASS,
     channels: [IRC_PUBLIC_CHANNEL],
+    realName: BOT_NAME,
     debug: false,
     sasl: true,
     autoConnect: false
