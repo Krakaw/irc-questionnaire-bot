@@ -2,6 +2,8 @@ const fs = require('fs');
 require('dotenv').config();
 const irc = require('irc');
 
+const DEBUG = process.env.DEBUG || false;
+
 const IRC_SERVER = process.env.IRC_SERVER;
 const IRC_NICK = process.env.IRC_NICK;
 const IRC_PASS = process.env.IRC_PASS;
@@ -21,7 +23,15 @@ const COMMAND_JOIN = process.env.COMMAND_JOIN;
 const COMMAND_START = process.env.COMMAND_START;
 const COMMAND_ADD_QUESTION = process.env.COMMAND_ADD_QUESTION;
 
+if (DEBUG) {
+    console.log(`Connecting to ${IRC_SERVER} as ${IRC_NICK} with${IRC_PASS ? ' password' : 'out a password'}`);
+    console.log(`Taking commands from ${IRC_ADMIN_NICK} in public channel ${IRC_PUBLIC_CHANNEL}`);
+}
 
+if (!IRC_SERVER || !IRC_NICK || !IRC_ADMIN_NICK || !IRC_PUBLIC_CHANNEL) {
+    console.error('Missing IRC_SERVER or IRC_NICK or IRC_ADMIN_NICK or IRC_PUBLIC_CHANNEL');
+    process.exit(1);
+}
 const users = readUsers();
 const questions = readQuestions();
 
