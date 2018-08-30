@@ -145,20 +145,6 @@ function processCommands(from, to, messageString) {
 
 }
 
-function showHelp(user) {
-    let helpMessage = `${BOT_NAME} is a questionnaire bot, it will PM you a set of questions and broadcast your answers back to ${IRC_PUBLIC_CHANNEL}\n`;
-    const isAdmin = user === IRC_ADMIN_NICK;
-    for (let commandText in COMMANDS) {
-        let command = COMMANDS[commandText];
-        if (!command.adminOnly) {
-            helpMessage += `${COMMAND_INITIALIZER} ${commandText} ${command.hasParams || ''}\n`;
-        } else if (command.adminOnly && isAdmin) {
-            helpMessage += `${COMMAND_INITIALIZER} ${commandText} ${command.hasParams || ''}\n`;
-        }
-    }
-    client.say(user, helpMessage);
-}
-
 client.addListener('error', function (message) {
     console.log('error: ', message);
     if (message.command === 'err_nosuchnick') {
@@ -177,12 +163,36 @@ client.connect(0, () => {
     console.log('Connected');
 });
 
+/**
+ * Sends the user the help text for the available commands
+ * @param user
+ */
+function showHelp(user) {
+    let helpMessage = `${BOT_NAME} is a questionnaire bot, it will PM you a set of questions and broadcast your answers back to ${IRC_PUBLIC_CHANNEL}\n`;
+    const isAdmin = user === IRC_ADMIN_NICK;
+    for (let commandText in COMMANDS) {
+        let command = COMMANDS[commandText];
+        if (!command.adminOnly) {
+            helpMessage += `${COMMAND_INITIALIZER} ${commandText} ${command.hasParams || ''}\n`;
+        } else if (command.adminOnly && isAdmin) {
+            helpMessage += `${COMMAND_INITIALIZER} ${commandText} ${command.hasParams || ''}\n`;
+        }
+    }
+    client.say(user, helpMessage);
+}
 
-function startQuestions(from, to, params) {
+/**
+ * Starts the questionnaire process
+ * If there is no list of nicks specified then we poll all the users
+ * @param from
+ * @param to
+ * @param listOfNicks Optional
+ */
+function startQuestions(from, to, listOfNicks) {
 
     let usersToPoll = users;
-    if (params.length > 0) {
-        usersToPoll = params;
+    if (listOfNicks.length > 0) {
+        usersToPoll = listOfNicks;
     }
 
     usersToPoll.forEach(user => {
@@ -190,16 +200,31 @@ function startQuestions(from, to, params) {
     });
 }
 
+/**
+ * Initializes the responses for the specific user
+ * @param user
+ */
 function startQuestionsForUser(user) {
     responses[user] = {};
     askQuestion(user, questions[0])
 }
 
+/**
+ * Sends the question to the user via a direct message
+ * @param user
+ * @param question
+ */
 function askQuestion(user, question) {
     responses[user][question] = false;
     client.say(user, question);
 }
 
+/**
+ * Adds the users's direct messages response to their responses
+ * Once all of the questions have been answered their answers are stored and sent to the IRC_PUBLIC_CHANNEL
+ * @param user
+ * @param answer
+ */
 function addAnswer(user, answer) {
     for (let i in questions) {
         let question = questions[i];
@@ -216,7 +241,9 @@ function addAnswer(user, answer) {
                 if (FINAL_MESSAGE) {
                     client.say(user, FINAL_MESSAGE);
                 }
-                console.log(`${new Date()} - Storing ${user} answers`);
+                if (DEBUG) {
+                    console.log(`${new Date()} - Storing ${user} answers`);
+                }
                 postToChannel(user);
                 storeAnswer(user);
             }
@@ -224,7 +251,10 @@ function addAnswer(user, answer) {
     }
 }
 
-
+/**
+ * Posts a formatted version of the user results to the IRC_PUBLIC_CHANNEL
+ * @param user
+ */
 function postToChannel(user) {
     client.say(IRC_PUBLIC_CHANNEL, RESULTS_START_MESSAGE.replace(/{user}/g, user));
     questions.forEach(question => {
@@ -233,7 +263,13 @@ function postToChannel(user) {
     });
 }
 
-
+/**
+ * Removes a user from the users list
+ * If no params are passed then from is used.
+ * @param from
+ * @param to
+ * @param params Optional
+ */
 function userLeave(from, to, params) {
     let userToLeave = from;
     if (params) {
@@ -260,7 +296,13 @@ function userLeave(from, to, params) {
     });
 }
 
-
+/**
+ * Adds a user to the users list
+ * If no params are passed then from is used
+ * @param from
+ * @param to
+ * @param params Optional
+ */
 function userJoin(from, to, params) {
     let userToJoin = from;
     if (params) {
@@ -286,6 +328,11 @@ function userJoin(from, to, params) {
 
 }
 
+/**
+ * Writes the users array to USERS_FILE
+ * @param users
+ * @param cb
+ */
 function storeUsers(users, cb) {
     fs.writeFile(USER_FILE_PATH, JSON.stringify(users), function (err) {
         if (err) {
@@ -297,12 +344,22 @@ function storeUsers(users, cb) {
     });
 }
 
-
+/**
+ * Adds a question to the list of questions
+ * @param from
+ * @param to
+ * @param params
+ */
 function addQuestion(from, to, params) {
     let question = params.join(' ');
     storeQuestion(question);
 }
 
+/**
+ * Stores the list of questions in the QUESTIONS_FILE and updates the questions array
+ * @param question
+ * @returns {boolean}
+ */
 function storeQuestion(question) {
     if (question.trim() === '') {
         return false;
@@ -318,6 +375,10 @@ function storeQuestion(question) {
     });
 }
 
+/**
+ * Stores the user's answers in the ANSWERS_FILE
+ * @param user
+ */
 function storeAnswer(user) {
     let storeData = Object.assign({}, responses[user]);
     storeData.date = new Date();
@@ -329,14 +390,28 @@ function storeAnswer(user) {
     });
 }
 
+/**
+ * Reads the questions from QUESTIONS_FILE
+ */
 function readQuestions() {
     return readJsonFile(QUESTION_FILE_PATH, [])
 }
 
+/**
+ * Reads the users from USERS_FILES
+ */
 function readUsers() {
     return readJsonFile(USER_FILE_PATH, []);
 }
 
+/**
+ * Reads a file filePath and converts it to JSON
+ * If the file doesn't exist it is created with defaultResult
+ * If the file is empty defaultResult is returned
+ * @param filePath
+ * @param defaultResult
+ * @returns {*}
+ */
 function readJsonFile(filePath, defaultResult) {
     try {
         if (!fs.existsSync(filePath)) {
