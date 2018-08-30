@@ -25,9 +25,11 @@ const COMMAND_INITIALIZER = process.env.COMMAND_INITIALIZER || '!q-bot';
 const COMMAND_HELP = process.env.COMMAND_HELP || 'help';
 const COMMAND_JOIN = process.env.COMMAND_JOIN || 'join';
 const COMMAND_LEAVE = process.env.COMMAND_LEAVE || 'leave';
+const ADMIN_COMMAND_USERS = process.env.ADMIN_COMMAND_USERS || 'users';
 const ADMIN_COMMAND_INVITE = process.env.ADMIN_COMMAND_INVITE || 'invite';
 const ADMIN_COMMAND_KICK = process.env.ADMIN_COMMAND_KICK || 'kick';
 const ADMIN_COMMAND_START = process.env.ADMIN_COMMAND_START || 'start';
+const ADMIN_COMMAND_PENDING = process.env.ADMIN_COMMAND_PENDING || 'pending';
 const ADMIN_COMMAND_ADD_QUESTION = process.env.ADMIN_COMMAND_ADD_QUESTION || 'add-question';
 
 const COMMANDS = {
@@ -46,10 +48,21 @@ const COMMANDS = {
         hasParams: false,
         func: userLeave
     },
+
+    [ADMIN_COMMAND_USERS]: {
+        adminOnly: true,
+        hasParams: false,
+        func: userList
+    },
     [ADMIN_COMMAND_INVITE]: {
         adminOnly: true,
         hasParams: 'nick',
         func: userJoin
+    },
+    [ADMIN_COMMAND_PENDING]: {
+        adminOnly: true,
+        hasParams: 'nick (optional)',
+        func: pending
     },
     [ADMIN_COMMAND_KICK]: {
         adminOnly: true,
@@ -81,7 +94,7 @@ if (!IRC_SERVER || !IRC_NICK || !IRC_ADMIN_NICK || !IRC_PUBLIC_CHANNEL) {
 
 const users = readUsers();
 const questions = readQuestions();
-const responses = {};
+const responses = {};//{user: {started: new Date(), answers: {}}}
 
 const client = new irc.Client(IRC_SERVER, IRC_NICK, {
     userName: IRC_NICK,
@@ -95,7 +108,7 @@ const client = new irc.Client(IRC_SERVER, IRC_NICK, {
 
 client.addListener('message', function (from, to, message) {
     // console.log(from + ' => ' + to + ': ' + message);
-
+    message = message.trim();
     //Check if the command initializer has been said
     if (message[0] === '!' && message.substr(0, COMMAND_INITIALIZER.length) === COMMAND_INITIALIZER) {
         processCommands(from, to, message);
@@ -126,6 +139,9 @@ function processCommands(from, to, messageString) {
     const command = commandParts.shift();
     const params = commandParts;
 
+    if (DEBUG) {
+        console.log('Command received:' , command, params);
+    }
     //Check if the command exists.
     if (!COMMANDS.hasOwnProperty(command)) {
         client.say(from, 'Invalid command');
@@ -182,6 +198,51 @@ function showHelp(user) {
 }
 
 /**
+ * Show a list of pending responses
+ * If a nick is supplied then show that user's actual responses
+ * @param from
+ * @param to
+ * @param listOfNicks
+ */
+function pending(from ,to, listOfNicks) {
+    let nick = false;
+    if (listOfNicks.length > 0) {
+        nick = listOfNicks.shift();
+    }
+    let message = '';
+    if (nick) {
+        //Show all of the responses for this nick
+        if (responses.hasOwnProperty(nick)) {
+            message += `${nick}'s answers from ${responses[nick].started}:\n`;
+            questions.forEach(question => {
+                message += `${question}\n> ${responses[nick].answers[question] || '(No Answer)'}\n`;
+            });
+        } else {
+            message = `${nick} has no pending responses`;
+        }
+    } else {
+        //Show all the users summary
+
+        let hasLiveResponses = false;
+        for (let user in responses) {
+            hasLiveResponses = true;
+            let answerCount = 0;
+            for (let answer in responses[user].answers) {
+                if (responses[user].answers[answer]) {
+                    answerCount++;
+                }
+            }
+            message += `${user} started at ${responses[user].started} - (${answerCount} / ${questions.length})\n`;
+        }
+        if (!hasLiveResponses) {
+            message = 'There are no pending responses';
+        }
+    }
+
+    client.say(IRC_ADMIN_NICK, message);
+
+}
+/**
  * Starts the questionnaire process
  * If there is no list of nicks specified then we poll all the users
  * @param from
@@ -205,7 +266,13 @@ function startQuestions(from, to, listOfNicks) {
  * @param user
  */
 function startQuestionsForUser(user) {
-    responses[user] = {};
+    responses[user] = {
+        nick: user,
+        started: new Date(),
+        lastAnswer: false,
+        answers: {}
+    };
+
     askQuestion(user, questions[0])
 }
 
@@ -215,7 +282,7 @@ function startQuestionsForUser(user) {
  * @param question
  */
 function askQuestion(user, question) {
-    responses[user][question] = false;
+    responses[user].answers[question] = false;
     client.say(user, question);
 }
 
@@ -228,12 +295,13 @@ function askQuestion(user, question) {
 function addAnswer(user, answer) {
     for (let i in questions) {
         let question = questions[i];
-        if (!responses[user].hasOwnProperty(question)) {
+        if (!responses[user].answers.hasOwnProperty(question)) {
             continue;
         }
         let hasNextQuestion = i < questions.length - 1;
-        if (responses[user][question] === false) {
-            responses[user][question] = answer;
+        if (responses[user].answers[question] === false) {
+            responses[user].lastAnswer = new Date();
+            responses[user].answers[question] = answer;
             if (hasNextQuestion) {
                 askQuestion(user, questions[parseInt(i) + 1]);
                 return;
@@ -246,6 +314,8 @@ function addAnswer(user, answer) {
                 }
                 postToChannel(user);
                 storeAnswer(user);
+                //Now delete the answer
+                delete responses[user];
             }
         }
     }
@@ -259,8 +329,15 @@ function postToChannel(user) {
     client.say(IRC_PUBLIC_CHANNEL, RESULTS_START_MESSAGE.replace(/{user}/g, user));
     questions.forEach(question => {
         client.say(IRC_PUBLIC_CHANNEL, question);
-        client.say(IRC_PUBLIC_CHANNEL, `> ${responses[user][question]}`);
+        client.say(IRC_PUBLIC_CHANNEL, `> ${responses[user].answers[question]}`);
     });
+}
+
+/**
+ * Sends a list of all registered users to the IRC_ADMIN_NICK
+ */
+function userList() {
+    client.say(IRC_ADMIN_NICK, users.join(', '));
 }
 
 /**
@@ -381,8 +458,6 @@ function storeQuestion(question) {
  */
 function storeAnswer(user) {
     let storeData = Object.assign({}, responses[user]);
-    storeData.date = new Date();
-    storeData.user = user;
     fs.appendFile(ANSWER_FILE_PATH, JSON.stringify(storeData) + "\n", function (err) {
         if (err) {
             console.error(err);
