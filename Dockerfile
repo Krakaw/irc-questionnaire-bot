@@ -25,4 +25,4 @@ RUN apk --no-cache add --virtual native-deps \
 # Bundle app source
 COPY . .
 
-CMD [ "node", "index.js" ]
+CMD [ "npm", "run", "start" ]
