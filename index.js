@@ -38,7 +38,7 @@ const COMMANDS = {
     [COMMAND_HELP]: {
         adminOnly: false,
         hasParams: false,
-        help: 'This command - show the available functions',
+        help: 'This command, show the available functions',
         func: showHelp
     },
     [COMMAND_JOIN]: {
@@ -70,7 +70,7 @@ const COMMANDS = {
         adminOnly: true,
         hasParams: 'nick notify[0|1]',
         help: 'Adds a user to the list of users',
-        func: userJoin
+        func: userInvite
     },
     [ADMIN_COMMAND_PENDING]: {
         adminOnly: true,
@@ -82,7 +82,7 @@ const COMMANDS = {
         adminOnly: true,
         hasParams: 'nick',
         help: 'Remove a user from the list of users',
-        func: userLeave
+        func: userKick
     },
     [ADMIN_COMMAND_START]: {
         adminOnly: true,
@@ -371,84 +371,154 @@ function userList() {
 }
 
 /**
- * Removes a user from the users list
- * If no params are passed then from is used.
+ * Admins can remove users from the list
+ * @param from
+ * @param to
+ * @param params
+ * @returns {Promise.<void>}
+ */
+async function userKick(from, to, params) {
+    let userToRemove = params.shift().trim();
+    let notifyUser = parseInt(params.shift() || 0);
+
+    let result = {
+        success: false,
+        message: 'No user specified'
+    };
+    if (userToRemove) {
+        result = await removeUser(userToRemove);
+    }
+    client.say(from, result.message);
+    if (result.success && notifyUser) {
+        client.say(userToRemove, `You have been removed from the ${BOT_NAME} by the admin`);
+    }
+}
+/**
+ * A normal user can leave the bot
+ *
  * @param from
  * @param to
  * @param params Optional
  */
-function userLeave(from, to, params) {
-    let userToLeave = from;
-    if (params) {
-        userToLeave = params.shift().trim();
-    }
-    let userIndex = users.indexOf(userToLeave);
-    if (userIndex === -1 || !userToLeave) {
-        client.say(from, `${userToLeave} does not exist`);
-        return;
-    }
+async function userLeave(from, to, params) {
+    let result = await removeUser(from);
+    client.say(from, result.message || `You have been removed from the ${BOT_NAME}`);
+}
 
+/**
+ * Admin can invite users
+ * @param from
+ * @param to
+ * @param params
+ */
+async function userInvite(from, to, params) {
+    let userToJoin = params.shift().trim();
+    let notifyUser = parseInt(params.shift() || 0);
+
+    let result = {
+        success: false,
+        message: 'No user specified'
+    };
+    if (userToJoin) {
+        result = await addUser(userToJoin);
+    }
+    client.say(from, result.message);
+    if (result.success && notifyUser) {
+        client.say(userToJoin, `You have been added to the ${BOT_NAME} by the admin`);
+    }
+}
+
+/**
+ * Let a normal user join the bot
+ * @param from
+ * @param to
+ * @param params
+ */
+async function userJoin(from, to, params) {
+    let result = await  addUser(from);
+    client.say(from, result.message || `You have been added to the ${BOT_NAME}`);
+}
+
+/**
+ * Removes a user from the users list
+ * @param userToRemove
+ * @returns {{success: boolean, message: string}}
+ */
+async function removeUser(userToRemove) {
+
+    let userIndex = users.indexOf(userToRemove);
+    if (userIndex === -1 || !userToRemove) {
+        return {
+            success: false,
+            message: `${userToRemove} does not exist`
+        };
+    }
     users.splice(userIndex, 1);
 
-    storeUsers(users, (err) => {
-        if (err) {
-            client.say(from, 'There was an error storing the user');
-        } else {
-            let addressee = 'You have';
-            if (from !== userToLeave) {
-                addressee = userToLeave + ' has';
-            }
-            client.say(from, `${addressee} been removed from ${BOT_NAME}`);
-        }
-    });
+    try {
+        await storeUsers(users);
+    }catch(e) {
+        return {
+            success: false,
+            message: e
+        };
+    }
+    return {
+        success: true,
+        message: ''
+    };
+
 }
 
 /**
  * Adds a user to the users list
- * If no params are passed then from is used
- * @param from
- * @param to
- * @param params Optional
+ * @param userToJoin
+ * @returns {{success: boolean, message: string}}
  */
-function userJoin(from, to, params) {
-    let userToJoin = from;
-    if (params) {
-        userToJoin = params.shift().trim();
-    }
+async function addUser(userToJoin) {
+
     let userIndex = users.indexOf(userToJoin);
     if (userIndex > -1 || !userToJoin) {
-        client.say(from, `${userToJoin} has already joined`);
-        return;
+        return {
+            success: false,
+            message: `${userToJoin} has already joined`
+        };
     }
     users.push(userToJoin);
-    storeUsers(users, (err) => {
-        if (err) {
-            client.say(from, 'There was an error storing the user');
-        } else {
-            let addressee = 'You have';
-            if (from !== userToJoin) {
-                addressee = userToJoin + ' has';
-            }
-            client.say(from, `${addressee} been added to ${BOT_NAME}`);
-        }
-    });
+
+    try {
+        await storeUsers(users);
+    }catch(e) {
+        return {
+            success: false,
+            message: e
+        };
+    }
+    return {
+        success: true,
+        message: ''
+    };
 
 }
 
 /**
  * Writes the users array to USERS_FILE
  * @param users
- * @param cb
+ * @returns {Promise}
  */
-function storeUsers(users, cb) {
-    fs.writeFile(USER_FILE_PATH, JSON.stringify(users), function (err) {
-        if (err) {
-            console.error(err);
-        }
-        if (cb) {
-            cb(err);
-        }
+async function storeUsers(users) {
+    return new Promise((resolve, reject) => {
+        fs.writeFile(USER_FILE_PATH, JSON.stringify(users), function (err) {
+            if (err) {
+                console.error(err);
+                return reject(err);
+            }
+
+            resolve();
+        });
     });
+
+
 }
 
 /**
