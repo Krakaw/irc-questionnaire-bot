@@ -19,16 +19,18 @@ const USER_FILE_PATH = process.env.USERS_FILE || 'users.json';
 const QUESTION_FILE_PATH = process.env.QUESTIONS_FILE || 'questions.json';
 const ANSWER_FILE_PATH = process.env.ANSWERS_FILE || 'answers.txt';
 
+const USERS_CAN_START_THERE_OWN_QUESTIONNAIRE = process.env.USERS_CAN_START_THERE_OWN_QUESTIONNAIRE || 0;
 
 const COMMAND_INITIALIZER = process.env.COMMAND_INITIALIZER || '!q-bot';
 
 const COMMAND_HELP = process.env.COMMAND_HELP || 'help';
 const COMMAND_JOIN = process.env.COMMAND_JOIN || 'join';
 const COMMAND_LEAVE = process.env.COMMAND_LEAVE || 'leave';
+const COMMAND_START = process.env.COMMAND_START || 'start';
 const ADMIN_COMMAND_USERS = process.env.ADMIN_COMMAND_USERS || 'users';
 const ADMIN_COMMAND_INVITE = process.env.ADMIN_COMMAND_INVITE || 'invite';
 const ADMIN_COMMAND_KICK = process.env.ADMIN_COMMAND_KICK || 'kick';
-const ADMIN_COMMAND_START = process.env.ADMIN_COMMAND_START || 'start';
+const ADMIN_COMMAND_START = process.env.ADMIN_COMMAND_START || 'start_all';
 const ADMIN_COMMAND_PENDING = process.env.ADMIN_COMMAND_PENDING || 'pending';
 const ADMIN_COMMAND_ADD_QUESTION = process.env.ADMIN_COMMAND_ADD_QUESTION || 'add-question';
 
@@ -47,6 +49,11 @@ const COMMANDS = {
         adminOnly: false,
         hasParams: false,
         func: userLeave
+    },
+    [COMMAND_START]: {
+        adminOnly: false,
+        hasParams: false,
+        func: userStartQuestions
     },
 
     [ADMIN_COMMAND_USERS]: {
@@ -72,14 +79,13 @@ const COMMANDS = {
     [ADMIN_COMMAND_START]: {
         adminOnly: true,
         hasParams: 'nick (optional)',
-        func: startQuestions
+        func: adminStartQuestions
     },
     [ADMIN_COMMAND_ADD_QUESTION]: {
         adminOnly: true,
         hasParams: 'question',
         func: addQuestion
     }
-
 };
 
 if (DEBUG) {
@@ -94,7 +100,7 @@ if (!IRC_SERVER || !IRC_NICK || !IRC_ADMIN_NICK || !IRC_PUBLIC_CHANNEL) {
 
 const users = readUsers();
 const questions = readQuestions();
-const responses = {};//{user: {started: new Date(), answers: {}}}
+const responses = {}; //{user: {started: new Date(), answers: {}}}
 
 const client = new irc.Client(IRC_SERVER, IRC_NICK, {
     userName: IRC_NICK,
@@ -113,9 +119,9 @@ client.addListener('message', function (from, to, message) {
     if (message[0] === '!' && message.substr(0, COMMAND_INITIALIZER.length) === COMMAND_INITIALIZER) {
         processCommands(from, to, message);
     } else if (
-        to === IRC_NICK
-        && users.indexOf(from) > -1
-        && responses.hasOwnProperty(from)) {
+        to === IRC_NICK &&
+        users.indexOf(from) > -1 &&
+        responses.hasOwnProperty(from)) {
         //Is it a direct message and the from user is in our list of users and we are expecting a response
         //This is a message to the bot from someone in our user list
         addAnswer(from, message);
@@ -140,7 +146,7 @@ function processCommands(from, to, messageString) {
     const params = commandParts;
 
     if (DEBUG) {
-        console.log('Command received:' , command, params);
+        console.log('Command received:', command, params);
     }
     //Check if the command exists.
     if (!COMMANDS.hasOwnProperty(command)) {
@@ -204,7 +210,7 @@ function showHelp(user) {
  * @param to
  * @param listOfNicks
  */
-function pending(from ,to, listOfNicks) {
+function pending(from, to, listOfNicks) {
     let nick = false;
     if (listOfNicks.length > 0) {
         nick = listOfNicks.shift();
@@ -242,6 +248,20 @@ function pending(from ,to, listOfNicks) {
     client.say(IRC_ADMIN_NICK, message);
 
 }
+
+/**
+ * A User can start their own questionnaire
+ * @param from
+ * @param to
+ */
+function userStartQuestions(from, to) {
+    if (USERS_CAN_START_THERE_OWN_QUESTIONNAIRE) {
+        startQuestionsForUser(from);
+    } else {
+        client.say(from, 'Only the admin can start the daily questionnaire.');
+    }
+}
+
 /**
  * Starts the questionnaire process
  * If there is no list of nicks specified then we poll all the users
@@ -249,7 +269,7 @@ function pending(from ,to, listOfNicks) {
  * @param to
  * @param listOfNicks Optional
  */
-function startQuestions(from, to, listOfNicks) {
+function adminStartQuestions(from, to, listOfNicks) {
 
     let usersToPoll = users;
     if (listOfNicks.length > 0) {
@@ -492,7 +512,9 @@ function readJsonFile(filePath, defaultResult) {
         if (!fs.existsSync(filePath)) {
             fs.writeFileSync(filePath, JSON.stringify(defaultResult));
         }
-        let content = fs.readFileSync(filePath, {encoding: 'utf8'});
+        let content = fs.readFileSync(filePath, {
+            encoding: 'utf8'
+        });
         if (content) {
             return JSON.parse(content);
         }
