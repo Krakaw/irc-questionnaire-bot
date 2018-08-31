@@ -19,6 +19,7 @@ const USER_FILE_PATH = process.env.USERS_FILE || 'users.json';
 const QUESTION_FILE_PATH = process.env.QUESTIONS_FILE || 'questions.json';
 const ANSWER_FILE_PATH = process.env.ANSWERS_FILE || 'answers.txt';
 
+const USERS_CAN_START_THERE_OWN_QUESTIONNAIRE = process.env.USERS_CAN_START_THERE_OWN_QUESTIONNAIRE || 0;
 
 const COMMAND_INITIALIZER = process.env.COMMAND_INITIALIZER || '!q-bot';
 
@@ -94,7 +95,7 @@ if (!IRC_SERVER || !IRC_NICK || !IRC_ADMIN_NICK || !IRC_PUBLIC_CHANNEL) {
 
 const users = readUsers();
 const questions = readQuestions();
-const responses = {};//{user: {started: new Date(), answers: {}}}
+const responses = {}; //{user: {started: new Date(), answers: {}}}
 
 const client = new irc.Client(IRC_SERVER, IRC_NICK, {
     userName: IRC_NICK,
@@ -113,9 +114,9 @@ client.addListener('message', function (from, to, message) {
     if (message[0] === '!' && message.substr(0, COMMAND_INITIALIZER.length) === COMMAND_INITIALIZER) {
         processCommands(from, to, message);
     } else if (
-        to === IRC_NICK
-        && users.indexOf(from) > -1
-        && responses.hasOwnProperty(from)) {
+        to === IRC_NICK &&
+        users.indexOf(from) > -1 &&
+        responses.hasOwnProperty(from)) {
         //Is it a direct message and the from user is in our list of users and we are expecting a response
         //This is a message to the bot from someone in our user list
         addAnswer(from, message);
@@ -140,7 +141,7 @@ function processCommands(from, to, messageString) {
     const params = commandParts;
 
     if (DEBUG) {
-        console.log('Command received:' , command, params);
+        console.log('Command received:', command, params);
     }
     //Check if the command exists.
     if (!COMMANDS.hasOwnProperty(command)) {
@@ -204,7 +205,7 @@ function showHelp(user) {
  * @param to
  * @param listOfNicks
  */
-function pending(from ,to, listOfNicks) {
+function pending(from, to, listOfNicks) {
     let nick = false;
     if (listOfNicks.length > 0) {
         nick = listOfNicks.shift();
@@ -492,7 +493,9 @@ function readJsonFile(filePath, defaultResult) {
         if (!fs.existsSync(filePath)) {
             fs.writeFileSync(filePath, JSON.stringify(defaultResult));
         }
-        let content = fs.readFileSync(filePath, {encoding: 'utf8'});
+        let content = fs.readFileSync(filePath, {
+            encoding: 'utf8'
+        });
         if (content) {
             return JSON.parse(content);
         }
