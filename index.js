@@ -38,52 +38,62 @@ const COMMANDS = {
     [COMMAND_HELP]: {
         adminOnly: false,
         hasParams: false,
+        help: 'This command - show the available functions',
         func: showHelp
     },
     [COMMAND_JOIN]: {
         adminOnly: false,
         hasParams: false,
+        help: 'Join the list of users that the bot interacts with',
         func: userJoin
     },
     [COMMAND_LEAVE]: {
         adminOnly: false,
         hasParams: false,
+        help: 'Leave the list of users that the bot interacts with',
         func: userLeave
     },
     [COMMAND_START]: {
         adminOnly: false,
         hasParams: false,
+        help: 'If enabled, start your questionnaire',
         func: userStartQuestions
     },
 
     [ADMIN_COMMAND_USERS]: {
         adminOnly: true,
         hasParams: false,
+        help: 'Shows a list of users',
         func: userList
     },
     [ADMIN_COMMAND_INVITE]: {
         adminOnly: true,
-        hasParams: 'nick',
+        hasParams: 'nick notify[0|1]',
+        help: 'Adds a user to the list of users',
         func: userJoin
     },
     [ADMIN_COMMAND_PENDING]: {
         adminOnly: true,
         hasParams: 'nick (optional)',
+        help: 'Shows a list of pending questionnaires, if a nick is supplied show the current answers for that user',
         func: pending
     },
     [ADMIN_COMMAND_KICK]: {
         adminOnly: true,
         hasParams: 'nick',
+        help: 'Remove a user from the list of users',
         func: userLeave
     },
     [ADMIN_COMMAND_START]: {
         adminOnly: true,
         hasParams: 'nick (optional)',
+        help: 'Start the questionnaire for everyone, if a nick is provided start it for that nick',
         func: adminStartQuestions
     },
     [ADMIN_COMMAND_ADD_QUESTION]: {
         adminOnly: true,
         hasParams: 'question',
+        help: 'Adds a question to the list of questions',
         func: addQuestion
     }
 };
@@ -194,11 +204,11 @@ function showHelp(user) {
     const isAdmin = user === IRC_ADMIN_NICK;
     for (let commandText in COMMANDS) {
         let command = COMMANDS[commandText];
-        if (!command.adminOnly) {
-            helpMessage += `${COMMAND_INITIALIZER} ${commandText} ${command.hasParams || ''}\n`;
-        } else if (command.adminOnly && isAdmin) {
-            helpMessage += `${COMMAND_INITIALIZER} ${commandText} ${command.hasParams || ''}\n`;
+        if (command.adminOnly && !isAdmin) {
+            //User is not the admin, so don't show adminOnly commands
+            continue;
         }
+        helpMessage += `${COMMAND_INITIALIZER} ${commandText} ${command.hasParams || ''} - ${command.help}\n`;
     }
     client.say(user, helpMessage);
 }
