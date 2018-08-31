@@ -19,7 +19,7 @@ const USER_FILE_PATH = process.env.USERS_FILE || 'users.json';
 const QUESTION_FILE_PATH = process.env.QUESTIONS_FILE || 'questions.json';
 const ANSWER_FILE_PATH = process.env.ANSWERS_FILE || 'answers.txt';
 
-const USERS_CAN_START_THERE_OWN_QUESTIONNAIRE = process.env.USERS_CAN_START_THERE_OWN_QUESTIONNAIRE || 0;
+const USERS_CANNOT_START_THEIR_OWN_QUESTIONNAIRE = process.env.USERS_CANNOT_START_THEIR_OWN_QUESTIONNAIRE || 0;
 
 const COMMAND_INITIALIZER = process.env.COMMAND_INITIALIZER || '!q-bot';
 
@@ -265,10 +265,10 @@ function pending(from, to, listOfNicks) {
  * @param to
  */
 function userStartQuestions(from, to) {
-    if (USERS_CAN_START_THERE_OWN_QUESTIONNAIRE) {
-        startQuestionsForUser(from);
+    if (USERS_CANNOT_START_THEIR_OWN_QUESTIONNAIRE) {
+        client.say(from, 'Only the admin can start the questionnaire.');
     } else {
-        client.say(from, 'Only the admin can start the daily questionnaire.');
+        startQuestionsForUser(from);
     }
 }
 
