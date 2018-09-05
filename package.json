@@ -5,14 +5,14 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
   },
   "author": "Krakaw",
   "license": "ISC",
   "dependencies": {
     "dotenv": "^6.0.0",
-    "irc": "^0.5.2"
+    "irc": "^0.5.2",
+    "nedb": "^1.8.0"
   },
-  "devDependencies": {
-  }
+  "devDependencies": {}
 }
