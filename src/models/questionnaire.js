@@ -17,7 +17,7 @@ class Questionnaire {
                     //{question: "", options: [], createdAt: ""}
                 ],
                 users: [
-                    //{nick: "", isAdmin: false, active: true, pendingAccept: false}
+                    //{nick: "", isModerator: false, active: true, pendingAccept: false}
                 ],
                 answers: [
                     //{nick: "", answers: {}, createdAt: ""}
@@ -29,6 +29,8 @@ class Questionnaire {
                 usersCanSelfJoin: true,
                 usersCanSelfStart: true,
                 usersCanRequestResults: true,
+                onlyModeratorsCanAddQuestions: true,//@TODO Implement this logic
+                onlyModeratorsCanInvite: true,//@TODO Implement this logic
                 sendResponsesTo: [],
                 startAtHour: false,
                 startOnDays: [],
@@ -59,37 +61,29 @@ class Questionnaire {
 
     }
 
-    async addUser(params, questionnaireId) {
-
-        return new Promise((resolve, reject) => {
-            const user = {
-                ...{
-                    nick: '',
-                    isAdmin: false,
-                    active: true,
-                    pendingAccept: false
-                },
-                ...params
-            };
-            this.db.update({_id: questionnaireId}, {$push: {users: user}}, {}, (err, num) => {
-                if (err) {
-                    return reject(err);
-                }
-                return resolve(num);
-            })
-        });
-    }
-
+    /**
+     * Add a question to the list of questions
+     * @param question
+     * @param questionnaireName
+     * @return {Promise<any>}
+     */
     async addQuestion(question, questionnaireName) {
         return new Promise((resolve, reject) => {
             if (typeof question === 'string') {
+                question = question.trim();
                 question = {
                     question,
-                    createdAt: new Date(),
-                    options: []
                 }
             }
-            question = question.trim();
+            question = {
+                ...{
+                    question: '',
+                    createdAt: new Date(),
+                    options: []
+                },
+                ...question
+            };
+
             if (!question) {
                 return reject('Question cannot be empty');
             }
@@ -102,6 +96,58 @@ class Questionnaire {
         });
     }
 
+    /**
+     * Adds a user to a questionnaire
+     * If they are the first user set them as a moderator
+     * @param params
+     * @param questionnaireId
+     * @return {Promise<any>}
+     */
+    async addUser(params, questionnaireId) {
+        if (typeof params === 'string') {
+            params = {
+                nick: params
+            };
+        }
+        return new Promise(async (resolve, reject) => {
+            const user = {
+                ...{
+                    nick: '',
+                    isModerator: false,
+                    active: true,
+                    pendingAccept: false
+                },
+                ...params
+            };
+            //Check if this user is already part of the questionnaire
+            let userExists = await this.findByNick(params.nick, {name: 1}, questionnaireId);
+            if (userExists.length) {
+                return reject({
+                    message: `${params.nick} is already a part of ${userExists[0].name}`
+                });
+            }
+
+            //If there are no users the first one is a moderator
+            let questionnaire = await this.get(questionnaireId, {users: 1});
+            if (questionnaire.users.length === 0) {
+                user.isModerator = true;
+            }
+            this.db.update({_id: questionnaireId}, {$push: {users: user}}, {}, (err, num) => {
+                if (err) {
+                    return reject(err);
+                }
+                return resolve(num);
+            })
+        });
+    }
+
+
+    /**
+     * Removes a user
+     * @param nick
+     * @param questionnaireId
+     * @return {Promise<any>}
+     */
     async removeUser(nick, questionnaireId) {
 
         return new Promise((resolve, reject) => {
@@ -113,6 +159,7 @@ class Questionnaire {
             })
         });
     }
+
 
     /**
      * Returns any pending questionnaires for the user
@@ -178,6 +225,13 @@ class Questionnaire {
         });
     }
 
+    /**
+     * Adds an answer to the pending entry, if moveOnComplete is true and the answer is the last answer it will move the pending result to answers
+     * @param nick
+     * @param answer
+     * @param moveOnComplete
+     * @return {Promise<{hasCompleted: boolean, currentIndex: number, questionnaire: T}>}
+     */
     async addAnswerToPendingEntry(nick, answer, moveOnComplete = true) {
         //Check if we have any pendingQuestionnaires answers for this user. Add the answer or tell them to start a questionnaire
         let pendingQuestionnaires = await this.findPendingForUser(nick);
@@ -191,7 +245,8 @@ class Questionnaire {
 
             for (let i in questionnaire.questions) {
                 const question = questionnaire.questions[i];
-                let isLastQuestion = i == questionnaire.questions.length - 1;
+                i = parseInt(i);
+                let isLastQuestion = (i === questionnaire.questions.length - 1);
 
                 if (pendingAnswers.answers[question] === '') {
                     //This is the first unanswered question, answer it and ask the next
@@ -205,7 +260,7 @@ class Questionnaire {
                     }
                     return {
                         hasCompleted: isLastQuestion,
-                        currentIndex: +i,
+                        currentIndex: i,
                         questionnaire
                     };
                 }
@@ -214,16 +269,22 @@ class Questionnaire {
             //Should never reach here
             //We probably just need to move the pending answers maybe something happened
             await this.movePendingAnswerToComplete(nick, questionnaire._id);
+            throw {message: 'Something went wrong, try again or contact the admin'};
         } else {
             throw {message: `You have not started a questionnaire`};
 
         }
     }
 
+    /**
+     * Takes a pending result out of the pending: {} object and pushes it into the answers array
+     * @param nick
+     * @param questionnaireId
+     * @return {Promise<any>}
+     */
     async movePendingAnswerToComplete(nick, questionnaireId) {
         let result = await this.findPendingForUser(nick, questionnaireId);
         let pendingResultKey = `pending.${nick}`;
-        console.log(result.pending);
         return new Promise((resolve, reject) => {
             //Remove pending
             this.db.update({_id: questionnaireId}, {
@@ -245,25 +306,69 @@ class Questionnaire {
     }
 
 
-    async get(name) {
-        return this.findBy({name}, null, true);
+    /**
+     * Get a questionnaire by its name or _id
+     * @param nameOrId
+     * @param projections
+     * @return {Promise<*>}
+     */
+    async get(nameOrId, projections) {
+        return this.findBy({
+            $or: [{
+                _id: nameOrId
+            }, {name: nameOrId}]
+        }, projections, true);
     }
 
-    async findByNick(nick, projections, questionnaireName) {
+    /**
+     * Get a list of questionnaires that have a user with nick: nick
+     * Optional questionnaire name filter
+     * @param nick
+     * @param projections
+     * @param questionnaireNameOrId
+     * @return {Promise<*>}
+     */
+    async findByNick(nick, projections, questionnaireNameOrId) {
+        if (typeof nick === 'string') {
+            nick = {
+                nick
+            };
+        }
+        if (!nick.nick) {
+            throw {message: 'You must specify a nick to lookup'};
+        }
         const conditions = {
             users: {
                 $elemMatch: {
-                    nick,
-                    active: true
+                    ...{
+                        nick: '',
+                        active: true
+                    },
+                    ...nick
+
                 }
             }
         };
-        if (questionnaireName) {
-            conditions.name = questionnaireName;
+        if (questionnaireNameOrId) {
+            conditions['$or'] = [
+                {
+                    name: questionnaireNameOrId
+                },
+                {
+                    _id: questionnaireNameOrId
+                }
+            ]
         }
         return this.findBy(conditions, projections);
     }
 
+    /**
+     * Generic find method
+     * @param params
+     * @param projections
+     * @param findOne
+     * @return {Promise<any>}
+     */
     async findBy(params = {}, projections = {}, findOne = false) {
         projections = projections || {};
         return new Promise((resolve, reject) => {

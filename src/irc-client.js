@@ -21,11 +21,11 @@ const COMMAND_JOIN = process.env.COMMAND_JOIN || 'join';
 const COMMAND_LEAVE = process.env.COMMAND_LEAVE || 'leave';
 const COMMAND_START = process.env.COMMAND_START || 'start';
 const ADMIN_COMMAND_USERS = process.env.ADMIN_COMMAND_USERS || 'users';
-const ADMIN_COMMAND_INVITE = process.env.ADMIN_COMMAND_INVITE || 'invite';
+const MODERATOR_COMMAND_INVITE = process.env.MODERATOR_COMMAND_INVITE || 'invite';
 const ADMIN_COMMAND_KICK = process.env.ADMIN_COMMAND_KICK || 'kick';
 const ADMIN_COMMAND_START = process.env.ADMIN_COMMAND_START || 'start_all';
 const ADMIN_COMMAND_PENDING = process.env.ADMIN_COMMAND_PENDING || 'pending';
-const ADMIN_COMMAND_ADD_QUESTION = process.env.ADMIN_COMMAND_ADD_QUESTION || 'add-question';
+const MODERATOR_COMMAND_ADD_QUESTION = process.env.MODERATOR_COMMAND_ADD_QUESTION || 'add-question';
 
 
 
@@ -146,11 +146,12 @@ class IrcClient {
         }
         //Run the COMMAND_ADD_ANSWER command
         return this.processCommands(from ,to, `${COMMAND_INITIALIZER} ${COMMAND_ADD_ANSWER} ${message}`);
-
     }
 
-
-
+    /**
+     * Binds this to all of the command functions
+     * @private
+     */
     _bindCommands() {
         for(let i in this.COMMANDS) {
             if (typeof this.COMMANDS[i].func === 'function') {

@@ -13,16 +13,19 @@ async function join(from, to, params) {
 
     try {
         const questionnaireName = params[0];
-        let questionnaire = await this.db.questionnaire.findBy({name: questionnaireName, usersCanSelfJoin: true}, null, true);
+        let questionnaire = await this.db.questionnaire.findBy({
+            name: questionnaireName,
+            usersCanSelfJoin: true
+        }, null, true);
 
         if (questionnaire) {
-            if (userIsPartOfQuestionnaire(from ,questionnaire)) {
+            if (userIsPartOfQuestionnaire(from, questionnaire)) {
                 message = `You are already part of ${questionnaireName}`;
             } else {
                 //Add to the questionnaire
                 let result = await this.db.questionnaire.addUser({nick: from}, questionnaire._id);
                 if (result) {
-                    message  = `You have been added to ${questionnaireName}`;
+                    message = `You have been added to ${questionnaireName}`;
                 }
             }
         } else {
@@ -53,13 +56,13 @@ async function leave(from, to, params) {
         let questionnaire = await this.db.questionnaire.findBy({name: questionnaireName}, null, true);
 
         if (questionnaire) {
-            if (!userIsPartOfQuestionnaire(from ,questionnaire)) {
+            if (!userIsPartOfQuestionnaire(from, questionnaire)) {
                 message = `You are not a part of ${questionnaireName}`;
             } else {
                 //Add to the questionnaire
                 let result = await this.db.questionnaire.removeUser(from, questionnaire._id);
                 if (result) {
-                    message  = `You have been remove from ${questionnaireName}`;
+                    message = `You have been remove from ${questionnaireName}`;
                 }
             }
         } else {
@@ -72,6 +75,52 @@ async function leave(from, to, params) {
     }
 
     return {message, to: from};
+
+}
+
+
+async function invite(from, to, params) {
+    let questionnaireName = params.shift();
+    let user = params.shift();
+
+    if (!questionnaireName) {
+        return {
+            message: 'You must specify a questionnaire name',
+            to: from
+        }
+    }
+    if (!user) {
+        return {
+            message: 'You must specify a nick to invite',
+            to: from
+        }
+    }
+    try{
+        let questionnaires = await this.db.questionnaire.findByNick({nick: from, isModerator: true}, null, questionnaireName);
+        if (questionnaires.length) {
+            let questionnaire = questionnaires.shift();
+            let result = await this.db.questionnaire.addUser({nick: user}, questionnaire._id);
+            if (result) {
+                return {message: `${user} has been added to ${questionnaireName}`, to: from};
+            }
+        } else {
+            return {message: `You are not a moderator of ${questionnaireName}`, to: from};
+        }
+    }catch(e) {
+        return {
+            message: 'There was an error inviting the user to the questionnaire'
+        }
+    }
+
+
+
+}
+
+async function kick(from, to, params, moderatorOnly) {
+
+}
+
+async function list(from, to, params, moderatorOnly) {
 
 }
 
@@ -90,10 +139,13 @@ async function whatNext(from, to, params) {
 
 /**
  *
- * @type {{join: join, leave: leave, whatNext: whatNext}}
+ * @type {{join: join, leave: leave, whatNext: whatNext, invite: invite, kick: *, list: *}}
  */
 module.exports = {
     join,
     leave,
-    whatNext
+    whatNext,
+    invite,
+    kick,
+    list
 };
