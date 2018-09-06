@@ -2,7 +2,7 @@
  * Sends the user the help text for the available commands
  * @param user
  */
-function showHelp(user) {
+async function help(user) {
     let helpMessage = `${this.botName} is a questionnaire bot, it will PM you a set of questions and store your answers\n`;
     const isAdmin = user === this.ircAdminNick;
     for (let commandText in this.COMMANDS) {
@@ -13,7 +13,9 @@ function showHelp(user) {
         }
         helpMessage += `${this.commandInitializer} ${commandText} ${command.hasParams || ''} - ${command.help}\n`;
     }
-    this.client.say(user, helpMessage);
+    return {message: helpMessage, to: user};
 }
 
-module.exports = showHelp;
+module.exports = {
+    help
+};

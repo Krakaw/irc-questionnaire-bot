@@ -1,5 +1,5 @@
 const irc = require('irc');
-const COMMANDS = require('./irc-commands');
+const COMMANDS = require('./commands');
 const DEBUG = process.env.DEBUG || false;
 
 const IRC_SERVER = process.env.IRC_SERVER;
@@ -14,6 +14,9 @@ const COMMAND_INITIALIZER = process.env.COMMAND_INITIALIZER || '!q-bot';
 
 
 const COMMAND_HELP = process.env.COMMAND_HELP || 'help';
+const INTERNAL_COMMAND_SAY = process.env.INTERNAL_COMMAND_SAY || '__say';
+const COMMAND_WHAT_NEXT = process.env.COMMAND_WHAT_NEXT || '?';
+const COMMAND_ADD_ANSWER = process.env.COMMAND_ADD_ANSWER || 'add-answer';
 const COMMAND_JOIN = process.env.COMMAND_JOIN || 'join';
 const COMMAND_LEAVE = process.env.COMMAND_LEAVE || 'leave';
 const COMMAND_START = process.env.COMMAND_START || 'start';
@@ -77,19 +80,19 @@ class IrcClient {
     }
 
 
-    processCommands(from, to, messageString) {
+    async processCommands(from, to, messageString) {
         //We must execute a command
-        let commandParts = messageString.split(' ');
+        let commandParts = messageString.replace(/\s{2,}/g, ' ').split(' ');
         //Remove the command initializer
         commandParts.splice(0, 1);
         if (commandParts.length === 0) {
             //No commands added
             this.client.say(from, 'Invalid command');
-            this.COMMANDS[COMMAND_HELP].func(from);
-            return;
+            //Force the help command
+            commandParts = [COMMAND_HELP];
         }
 
-        const command = commandParts.shift();
+        let command = commandParts.shift();
         const params = commandParts;
 
         if (DEBUG) {
@@ -98,8 +101,7 @@ class IrcClient {
         //Check if the command exists.
         if (!COMMANDS.hasOwnProperty(command)) {
             this.client.say(from, 'Invalid command');
-            this.COMMANDS[COMMAND_HELP].func(from);
-            return;
+            command = COMMAND_HELP;
         }
 
         //Check if only admins can run it
@@ -110,8 +112,43 @@ class IrcClient {
         }
 
         //Run the command
-        COMMANDS[command].func(from, to, COMMANDS[command].hasParams ? params : null);
+
+        try {
+            let result = await COMMANDS[command].func(from, to, COMMANDS[command].hasParams ? params : null) || {};
+            if (!result.silent) {
+                this.client.say(result.to || from, result.message);
+            }
+            if (result.next) {
+                if (typeof result.next === 'function') {
+                    result.next();
+                } else {
+                    const next = result.next;
+                    switch (next.command) {
+                        case INTERNAL_COMMAND_SAY:
+                            this.client.say(...next.params);
+                            break;
+                        default:
+                            console.error('Invalid result.next command', result);
+                    }
+                }
+            }
+        }catch(e) {
+            e = e || {};
+            console.error(`${command} failed`, e);
+            this.client.say(e.to || from, `Error: ${e.message || ''}`);
+        }
     }
+
+    async processMessages(from, to, message) {
+        //Check if it's specifically whatNext?
+        if (message === COMMAND_WHAT_NEXT) {
+            return this.processCommands(from, to, `${COMMAND_INITIALIZER} ${message}`);
+        }
+        //Run the COMMAND_ADD_ANSWER command
+        return this.processCommands(from ,to, `${COMMAND_INITIALIZER} ${COMMAND_ADD_ANSWER} ${message}`);
+
+    }
+
 
 
     _bindCommands() {
@@ -127,6 +164,11 @@ class IrcClient {
         //Check if the command initializer has been said
         if (message[0] === '!' && message.substr(0, COMMAND_INITIALIZER.length) === COMMAND_INITIALIZER) {
             this.processCommands(from, to, message);
+        } else if (to === IRC_NICK) {
+            //It's a direct message let's perk up our ears
+            this.processMessages(from ,to, message);
+
+
         }
         // else if (
         //     to === IRC_NICK &&

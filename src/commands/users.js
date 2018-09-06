@@ -1,7 +1,11 @@
 const userIsPartOfQuestionnaire = require('./helpers').userIsPartOfQuestionnaire;
+
 /**
  * A user can join the questionnaire
- * @param user
+ * @param from
+ * @param to
+ * @param params
+ * @return {Promise<{message: string, to: *}>}
  */
 async function join(from, to, params) {
     let message = '';
@@ -29,8 +33,7 @@ async function join(from, to, params) {
         message = 'There was an error fetching adding you to the questionnaire';
         console.error(e);
     }
-
-    this.client.say(from, message);
+    return {message, to: from};
 
 }
 
@@ -39,7 +42,7 @@ async function join(from, to, params) {
  * @param from
  * @param to
  * @param params
- * @return {Promise<void>}
+ * @return {Promise<{message: string, to: *}>}
  */
 async function leave(from, to, params) {
     let message = '';
@@ -68,15 +71,29 @@ async function leave(from, to, params) {
         console.error(e);
     }
 
-    this.client.say(from, message);
+    return {message, to: from};
 
 }
 
 /**
+ * Checks if the user is currently answering a questionnaire and resends the question
+ * Otherwise tells them how to start a questionnaire
+ * @param from
+ * @param to
+ * @param params
+ * @return {Promise<{message: *}>}
+ */
+async function whatNext(from, to, params) {
+    let message = 'Whats next?';
+    return {message, to: from};
+}
+
+/**
  *
- * @type {{join: join, leave: leave}}
+ * @type {{join: join, leave: leave, whatNext: whatNext}}
  */
 module.exports = {
     join,
-    leave
+    leave,
+    whatNext
 };

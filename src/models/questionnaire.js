@@ -12,9 +12,18 @@ class Questionnaire {
             ...{
                 name: '',
                 active: true,
-                questions: [],
+                questions: [
+                    //@TODO Implement options
+                    //{question: "", options: [], createdAt: ""}
+                ],
                 users: [
                     //{nick: "", isAdmin: false, active: true, pendingAccept: false}
+                ],
+                answers: [
+                    //{nick: "", answers: {}, createdAt: ""}
+                ],
+                pending: [
+                    //nick: {startedAt: 0, answers: {}, lastAnsweredAt: 0}
                 ],
                 joinChannels: [],
                 usersCanSelfJoin: true,
@@ -23,12 +32,6 @@ class Questionnaire {
                 sendResponsesTo: [],
                 startAtHour: false,
                 startOnDays: [],
-                answers: [
-                    //{nick: "", answers: {}, createdAt: ""}
-                ],
-                pending: {
-                    //nick: {startedAt: 0, answers: {}, lastAnsweredAt: 0}
-                },
                 startMessage: '',
                 finalMessage: ''
             },
@@ -79,6 +82,13 @@ class Questionnaire {
 
     async addQuestion(question, questionnaireName) {
         return new Promise((resolve, reject) => {
+            if (typeof question === 'string') {
+                question = {
+                    question,
+                    createdAt: new Date(),
+                    options: []
+                }
+            }
             question = question.trim();
             if (!question) {
                 return reject('Question cannot be empty');
@@ -104,21 +114,61 @@ class Questionnaire {
         });
     }
 
-    async startQuestionnaire(nick, questionnaireId) {
-        return new Promise(async (resolve, reject) => {
-            let answerBlock = {
-                nick,
-                startedAt: new Date(),
-                lastAnsweredAt: '',
-                answers: {}
-            };
-            let result = await this.findBy({_id: questionnaireId}, {questions: 1}, true);
-            result.questions.forEach(question => {
-                answerBlock.answers[question] = '';
-            });
-            let pendingKey = `pending.${nick}`;
+    /**
+     * Returns any pending questionnaires for the user
+     * @param nick
+     * @param questionnaireId
+     * @return {Promise<*>}
+     */
+    async findPendingForUser(nick, questionnaireId = false) {
 
-            return this.db.update({_id: questionnaireId}, {$set: { [pendingKey]: answerBlock}}, {}, function(err, num) {
+        let check = `pending.${nick}`;
+        const conditions = {
+            [check]: {
+                $exists: true
+            }
+        };
+        if (questionnaireId) {
+            conditions._id = questionnaireId;
+        }
+        return this.findBy(conditions, null, !!questionnaireId);
+    }
+
+    /**
+     * Creates a pending entry for the specific nick
+     * @param nickOrData
+     * @param questionnaireId
+     * @return {Promise<any>}
+     */
+    async createPendingEntry(nickOrData, questionnaireId) {
+        return new Promise(async (resolve, reject) => {
+            if (typeof nickOrData === 'string') {
+                nickOrData = {
+                    nick: nickOrData
+                };
+            }
+            let answerBlock = {
+                ... {
+                    nick: '',
+                    startedAt: new Date(),
+                    lastAnsweredAt: '',
+                    answers: {}
+                },
+                ...nickOrData
+            };
+            //Get the questions from the questionnaire
+            let result = await this.findBy({_id: questionnaireId}, {questions: 1}, true);
+
+            result.questions.forEach(question => {
+                if (!answerBlock.answers.hasOwnProperty(question)) {
+                    answerBlock.answers[question] = '';
+                }
+
+            });
+
+            let pendingKey = `pending.${nickOrData.nick}`;
+
+            return this.db.update({_id: questionnaireId}, {$set: {[pendingKey]: answerBlock}}, {}, function (err, num) {
                 if (err) {
                     return reject(err);
                 }
@@ -127,6 +177,73 @@ class Questionnaire {
 
         });
     }
+
+    async addAnswerToPendingEntry(nick, answer, moveOnComplete = true) {
+        //Check if we have any pendingQuestionnaires answers for this user. Add the answer or tell them to start a questionnaire
+        let pendingQuestionnaires = await this.findPendingForUser(nick);
+
+        if (pendingQuestionnaires && pendingQuestionnaires.length) {
+            //Take the first questionnaire
+            let questionnaire = pendingQuestionnaires.shift();
+            //Grab the pending block
+            const pendingAnswers = questionnaire.pending[nick];
+            //Loop through the questions to ask
+
+            for (let i in questionnaire.questions) {
+                const question = questionnaire.questions[i];
+                let isLastQuestion = i == questionnaire.questions.length - 1;
+
+                if (pendingAnswers.answers[question] === '') {
+                    //This is the first unanswered question, answer it and ask the next
+                    pendingAnswers.lastAnsweredAt = new Date();
+                    pendingAnswers.answers[question] = answer;
+                    await this.createPendingEntry(pendingAnswers, questionnaire._id);
+                    if (isLastQuestion && moveOnComplete) {
+                        //We have answered the last question
+                        //Store the answer in answers
+                        await this.movePendingAnswerToComplete()
+                    }
+                    return {
+                        hasCompleted: isLastQuestion,
+                        currentIndex: +i,
+                        questionnaire
+                    };
+                }
+
+            }
+            //Should never reach here
+            //We probably just need to move the pending answers maybe something happened
+            await this.movePendingAnswerToComplete(nick, questionnaire._id);
+        } else {
+            throw {message: `You have not started a questionnaire`};
+
+        }
+    }
+
+    async movePendingAnswerToComplete(nick, questionnaireId) {
+        let result = await this.findPendingForUser(nick, questionnaireId);
+        let pendingResultKey = `pending.${nick}`;
+        console.log(result.pending);
+        return new Promise((resolve, reject) => {
+            //Remove pending
+            this.db.update({_id: questionnaireId}, {
+                $push: {
+                    answers: result.pending[nick]
+                },
+                $unset: {
+                    [pendingResultKey]: true
+                }
+            }, {}, (err, num) => {
+                if (err) {
+                    console.err(err);
+                    return reject(err);
+                }
+                resolve(num);
+            });
+        });
+
+    }
+
 
     async get(name) {
         return this.findBy({name}, null, true);
@@ -164,6 +281,7 @@ class Questionnaire {
 
         });
     }
+
 }
 
 module.exports = Questionnaire;

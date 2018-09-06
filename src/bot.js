@@ -11,6 +11,7 @@ const ircClient = new IrcClient(db);
 ircClient.create().connect();
 
 
+
 // db.questionnaire.create({
 //     name :"questionnaire 1"
 // }).then(res => {
@@ -18,7 +19,12 @@ ircClient.create().connect();
 // }).catch(e => {
 //     console.log(e);
 // })
-// db.questionnaire.get("q1").then (result => {
+// db.questionnaire.findPendingForUser("Krakaw").then (result => {
+//     console.log(result);
+// }).catch(e => {
+//     console.error('asDasdasD',e);
+// })
+// db.questionnaire.addAnswerToPendingEntry("Krakaw", "MY last Other answer").then (result => {
 //     console.log(result);
 // }).catch(e => {
 //     console.error('asDasdasD',e);
