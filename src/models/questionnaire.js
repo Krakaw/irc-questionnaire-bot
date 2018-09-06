@@ -207,8 +207,8 @@ class Questionnaire {
             let result = await this.findBy({_id: questionnaireId}, {questions: 1}, true);
 
             result.questions.forEach(question => {
-                if (!answerBlock.answers.hasOwnProperty(question)) {
-                    answerBlock.answers[question] = '';
+                if (!answerBlock.answers.hasOwnProperty(question.question)) {
+                    answerBlock.answers[question.question] = '';
                 }
 
             });
@@ -248,15 +248,24 @@ class Questionnaire {
                 i = parseInt(i);
                 let isLastQuestion = (i === questionnaire.questions.length - 1);
 
-                if (pendingAnswers.answers[question] === '') {
+                if (pendingAnswers.answers[question.question] === '') {
                     //This is the first unanswered question, answer it and ask the next
                     pendingAnswers.lastAnsweredAt = new Date();
-                    pendingAnswers.answers[question] = answer;
+                    pendingAnswers.answers[question.question] = answer;
                     await this.createPendingEntry(pendingAnswers, questionnaire._id);
                     if (isLastQuestion && moveOnComplete) {
                         //We have answered the last question
                         //Store the answer in answers
-                        await this.movePendingAnswerToComplete()
+                        await this.movePendingAnswerToComplete(nick, questionnaire._id);
+                    }
+                    return {
+                        hasCompleted: isLastQuestion,
+                        currentIndex: i,
+                        questionnaire
+                    };
+                } else {
+                    if (isLastQuestion) {
+                        await this.movePendingAnswerToComplete(nick, questionnaire._id);
                     }
                     return {
                         hasCompleted: isLastQuestion,
@@ -266,10 +275,6 @@ class Questionnaire {
                 }
 
             }
-            //Should never reach here
-            //We probably just need to move the pending answers maybe something happened
-            await this.movePendingAnswerToComplete(nick, questionnaire._id);
-            throw {message: 'Something went wrong, try again or contact the admin'};
         } else {
             throw {message: `You have not started a questionnaire`};
 
@@ -296,7 +301,7 @@ class Questionnaire {
                 }
             }, {}, (err, num) => {
                 if (err) {
-                    console.err(err);
+                    console.error(err);
                     return reject(err);
                 }
                 resolve(num);

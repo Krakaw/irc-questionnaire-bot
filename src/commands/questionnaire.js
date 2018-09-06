@@ -19,13 +19,14 @@ async function startUser(from, to, params) {
         let questionnaire = questionnaires[0];
         try {
             let result = await this.db.questionnaire.createPendingEntry(from, questionnaire._id);
+            let question = questionnaire.questions.shift() || {};
             return {
                 silent: true,
                 next: {
                     command: process.env.INTERNAL_COMMAND_SAY,
                     params: [
                         from,
-                        questionnaire.questions.shift()
+                        question.question
                     ]
                 }
             }
@@ -38,6 +39,43 @@ async function startUser(from, to, params) {
             to: from,
             message: 'You have provided an invalid questionnaire name, or are not part of the questionnaire'
         };
+    }
+
+}
+
+async function startAll(from ,to,params) {
+    let questionnaireName = params.shift();
+    let specificUser = params.shift();
+
+    if (!questionnaireName) {
+        return {
+            message: 'You must specify a questionnaire name',
+            to: from
+        }
+    }
+
+    try {
+        let questionnaire =  await this.db.questionnaire.get(questionnaireName, {users:1});
+        let results = [];
+        for (let i in questionnaire.users) {
+            let user = questionnaire.users[i];
+
+            if (!specificUser) {
+                results.push(await startUser.apply(this, [user.nick, to, [questionnaireName]]));
+            }else if (specificUser === user.nick) {
+                results.push(await startUser.apply(this, [user.nick, to, [questionnaireName]]));
+
+            }
+
+        }
+        return results;
+
+    }catch(e) {
+        console.error(e);
+        return {
+            message: 'There was an error starting the questionnaire',
+            to:from
+        }
     }
 
 }
@@ -96,10 +134,12 @@ async function addAnswer(from, to, params) {
             to: from,
             message: result.hasCompleted ?
                 result.questionnaire.finalMessage :
-                result.questionnaire.questions[++result.currentIndex]
+                result.questionnaire.questions[++result.currentIndex].question
         }
     }catch (e) {
-        return {to: from, message: e.message || 'There was an error adding your answer'};
+        console.error(e);
+        //Don't send any feedback, can create infinite loops
+        // return {to: from, message: e.message || 'There was an error adding your answer'};
     }
 
 
@@ -107,11 +147,12 @@ async function addAnswer(from, to, params) {
 
 /**
  *
- * @type {{startUser: startUser, addQuestion: addQuestion, listUser: listUser}}
+ * @type {{addAnswer: addAnswer, startUser: startUser, addQuestion: addQuestion, listUser: listUser, startAll: startAll}}
  */
 module.exports = {
     addAnswer,
     startUser,
     addQuestion,
-    listUser
+    listUser,
+    startAll
 };

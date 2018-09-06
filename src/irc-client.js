@@ -1,5 +1,6 @@
 const irc = require('irc');
 const COMMANDS = require('./commands');
+
 const DEBUG = process.env.DEBUG || false;
 
 const IRC_SERVER = process.env.IRC_SERVER;
@@ -114,24 +115,28 @@ class IrcClient {
         //Run the command
 
         try {
-            let result = await COMMANDS[command].func(from, to, COMMANDS[command].hasParams ? params : null) || {};
-            if (!result.silent) {
-                this.client.say(result.to || from, result.message);
-            }
-            if (result.next) {
-                if (typeof result.next === 'function') {
-                    result.next();
-                } else {
-                    const next = result.next;
-                    switch (next.command) {
-                        case INTERNAL_COMMAND_SAY:
-                            this.client.say(...next.params);
-                            break;
-                        default:
-                            console.error('Invalid result.next command', result);
+            let results = await COMMANDS[command].func(from, to, COMMANDS[command].hasParams ? params : null) || {};
+            results = [].concat(results);
+            results.forEach(result => {
+                if (!result.silent) {
+                    this.client.say(result.to || from, result.message);
+                }
+                if (result.next) {
+                    if (typeof result.next === 'function') {
+                        result.next();
+                    } else {
+                        const next = result.next;
+                        switch (next.command) {
+                            case INTERNAL_COMMAND_SAY:
+                                this.client.say(...next.params);
+                                break;
+                            default:
+                                console.error('Invalid result.next command', result);
+                        }
                     }
                 }
-            }
+            })
+
         }catch(e) {
             e = e || {};
             console.error(`${command} failed`, e);

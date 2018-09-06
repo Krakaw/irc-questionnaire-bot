@@ -8,8 +8,8 @@ const NEDB_FILE_PATH = process.env.NEDB_FILE || 'db';
 
 const db = new Database(NEDB_FILE_PATH);
 
-
-// db.questionnaire.addUser('bob', 'vvt9r4NMMhVfqlet').then(result => {
+//
+// db.questionnaire.addQuestion('Question?', 'q1').then(result => {
 //     console.log(result);
 // }).catch(e => {
 //     console.error('Error', e);
@@ -19,11 +19,17 @@ const db = new Database(NEDB_FILE_PATH);
 // }).catch(e => {
 //     console.error('Error', e);
 // });
-// db.questionnaire.removeUser('bob', 'vvt9r4NMMhVfqlet').then(result => {
+// db.questionnaire.createPendingEntry('Krakaw', 'vvt9r4NMMhVfqlet').then(result => {
 //     console.log(result);
 // }).catch(e => {
 //     console.error('Error', e);
 // });
+// db.questionnaire.addAnswerToPendingEntry('Krakaw', "answer!", true).then(result => {
+//     console.log(result);
+// }).catch(e => {
+//     console.error('Error', e);
+// });
+
 
 
 // db.questionnaire.get('vvt9r4NMMhVfqlet').then(result => {
@@ -35,10 +41,10 @@ const db = new Database(NEDB_FILE_PATH);
 
 
 
-
+//
 const ircClient = new IrcClient(db);
 ircClient.create().connect(0, () => {
-    // ircClient._onMessage('Krakaw', 'bn-test-bot', '!daily-dev-bot invite q1 bn-bot');
+    // ircClient._onMessage('Krakaw', 'bn-test-bot', '!daily-dev-bot start_all q1');
 });
 
 

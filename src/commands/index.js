@@ -92,9 +92,10 @@ const COMMANDS = {
     },
     [ADMIN_COMMAND_START]: {
         adminOnly: true,
-        hasParams: 'nick (optional)',
+        moderatorOnly:true,
+        hasParams: 'questionnaire_name nick (optional)',
         help: 'Start the questionnaire for everyone, if a nick is provided start it for that nick',
-        func: notImplemented
+        func: questionnaire.startAll
         // func: 'adminStartQuestions'
     },
     [MODERATOR_COMMAND_ADD_QUESTION]: {
