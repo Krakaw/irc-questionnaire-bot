@@ -1,18 +1,53 @@
 const Datastore = require('nedb');
 const Questionnaire = require('./models/questionnaire');
+const DEBUG = process.env.DEBUG || false;
 
-module.exports = function (dbPath) {
-    this.questionnaireDb = new Datastore({
-        filename: dbPath + 'questionnaire.nedb', autoload: true, timestampData: true, onload: (err) => {
-            console.log('DB Ready');
+module.exports = class Database {
+    constructor(dbPath) {
+        this.questionnaireDb = this._createDatabase(`${dbPath}.questionnaire.nedb`);
+        this.questionnaire = new Questionnaire(this.questionnaireDb);
+    }
+
+    _createDatabase(datastoreParams, indexes = []) {
+        if (typeof datastoreParams === 'string') {
+            datastoreParams = {
+                filename: datastoreParams,
+            }
         }
-    });
-    this.questionnaireDb.ensureIndex({fieldName: 'name', unique: true}, (err) => {
-        if (err) {
+        datastoreParams = {
+            ...{
+                filename: '',
+                autoload: true,
+                timestampData: true,
+                onload(err) {
+                    if (DEBUG) {
+                        console.log(`${datastoreParams.filename} is ready`);
+                    }
+                }
+            },
+            ...datastoreParams
+        };
+        let db = new Datastore(datastoreParams);
 
-            console.error("Error creating nedb", err);
+        if (indexes.length) {
+            indexes.forEach(index => {
+                let indexParams = {
+                    ...{
+                        fieldName: '',
+                        unique: false,
+                        onload(err) {
+                            if (err) {
+                                console.error('Error creting index', err);
+                            }
+                        }
+                    },
+                    index
+                };
+
+                db.ensureIndex(index, index.onload);
+            })
         }
-    });
+        return db;
 
-    this.questionnaire = new Questionnaire(this.questionnaireDb);
-};
+    }
+}

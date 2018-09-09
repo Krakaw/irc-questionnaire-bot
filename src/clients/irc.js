@@ -1,5 +1,5 @@
 const irc = require('irc');
-const COMMANDS = require('./commands');
+const COMMANDS = require('../commands/index');
 
 const DEBUG = process.env.DEBUG || false;
 
@@ -10,8 +10,6 @@ const IRC_ADMIN_NICK = process.env.IRC_ADMIN_NICK;
 
 const BOT_NAME = process.env.BOT_NAME || 'Questionnaire Bot';
 const COMMAND_INITIALIZER = process.env.COMMAND_INITIALIZER || '!q-bot';
-
-
 
 
 const COMMAND_HELP = process.env.COMMAND_HELP || 'help';
@@ -29,20 +27,12 @@ const ADMIN_COMMAND_PENDING = process.env.ADMIN_COMMAND_PENDING || 'pending';
 const MODERATOR_COMMAND_ADD_QUESTION = process.env.MODERATOR_COMMAND_ADD_QUESTION || 'add-question';
 
 
-
-
-
-if (DEBUG) {
-    console.log(`Connecting to ${IRC_SERVER} as ${IRC_NICK} with${IRC_PASS ? ' password' : 'out a password'}`);
-    console.log(`Taking commands from ${IRC_ADMIN_NICK} `);
-}
-
 if (!IRC_SERVER || !IRC_NICK || !IRC_ADMIN_NICK) {
     console.error('Missing IRC_SERVER or IRC_NICK or IRC_ADMIN_NICK');
     process.exit(1);
 }
 
-class IrcClient {
+class Irc {
     constructor(db) {
         this.db = db;
         this.COMMANDS = COMMANDS;
@@ -50,31 +40,43 @@ class IrcClient {
         this.botName = BOT_NAME;
         this.ircAdminNick = IRC_ADMIN_NICK;
         this.client = false;
+
+        this.create().connect(0, () => {
+            // ircClient._onMessage('Krakaw', 'bn-test-bot', '!daily-dev-bot start_all q1');
+        });
     }
 
     create(server, nick, options) {
+
         server = server || IRC_SERVER;
         nick = nick || IRC_NICK;
         options = {
             ...{
                 userName: nick,
-                password: IRC_PASS,
-                realName: BOT_NAME,
+                password: IRC_PASS || '',
+                realName: BOT_NAME || nick,
                 debug: false,
                 sasl: true,
                 autoConnect: false
             },
             ...options
         };
+
+        if (DEBUG) {
+            console.log(`Connecting to ${server} as ${nick} with${options.password ? ' password' : 'out a password'}`);
+            console.log(`Taking commands from ${IRC_ADMIN_NICK} `);
+        }
+
         this.client = new irc.Client(server, nick, options);
         this.client.addListener('message', this._onMessage.bind(this));
         this.client.addListener('error', this._onError.bind(this));
         this._bindCommands();
         return this;
     }
+
     connect(retryCount, cb) {
         retryCount = retryCount || 0;
-        cb = cb || function() {
+        cb = cb || function () {
             console.log('Connected');
         };
         this.client.connect(retryCount, cb)
@@ -137,7 +139,7 @@ class IrcClient {
                 }
             })
 
-        }catch(e) {
+        } catch (e) {
             e = e || {};
             console.error(`${command} failed`, e);
             this.client.say(e.to || from, `Error: ${e.message || ''}`);
@@ -150,7 +152,7 @@ class IrcClient {
             return this.processCommands(from, to, `${COMMAND_INITIALIZER} ${message}`);
         }
         //Run the COMMAND_ADD_ANSWER command
-        return this.processCommands(from ,to, `${COMMAND_INITIALIZER} ${COMMAND_ADD_ANSWER} ${message}`);
+        return this.processCommands(from, to, `${COMMAND_INITIALIZER} ${COMMAND_ADD_ANSWER} ${message}`);
     }
 
     /**
@@ -158,7 +160,7 @@ class IrcClient {
      * @private
      */
     _bindCommands() {
-        for(let i in this.COMMANDS) {
+        for (let i in this.COMMANDS) {
             if (typeof this.COMMANDS[i].func === 'function') {
                 this.COMMANDS[i].func = this.COMMANDS[i].func.bind(this);
             }
@@ -172,7 +174,7 @@ class IrcClient {
             this.processCommands(from, to, message);
         } else if (to === IRC_NICK) {
             //It's a direct message let's perk up our ears
-            this.processMessages(from ,to, message);
+            this.processMessages(from, to, message);
 
 
         }
@@ -203,4 +205,4 @@ class IrcClient {
 
 }
 
-module.exports = IrcClient;
+module.exports = Irc;

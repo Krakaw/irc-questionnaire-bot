@@ -1,6 +1,6 @@
 require('dotenv').config();
 const Database = require('./db');
-const IrcClient =   require('./irc-client');
+const IrcClient =   require('./clients/irc');
 
 const DEBUG = process.env.DEBUG || false;
 
@@ -8,6 +8,10 @@ const NEDB_FILE_PATH = process.env.NEDB_FILE || 'db';
 
 const db = new Database(NEDB_FILE_PATH);
 
+const Clients = require('./clients');
+Clients.forEach(Client => {
+    // new Client(db);
+});
 //
 // db.questionnaire.addQuestion('Question?', 'q1').then(result => {
 //     console.log(result);
@@ -42,10 +46,8 @@ const db = new Database(NEDB_FILE_PATH);
 
 
 //
-const ircClient = new IrcClient(db);
-ircClient.create().connect(0, () => {
-    // ircClient._onMessage('Krakaw', 'bn-test-bot', '!daily-dev-bot start_all q1');
-});
+// const ircClient = new IrcClient(db);
+
 
 
 
