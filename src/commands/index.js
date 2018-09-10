@@ -21,48 +21,56 @@ const notImplemented = (from, to, params)  => {
 };
 const COMMANDS = {
     [COMMAND_HELP]: {
+        restPath: '/help',
         adminOnly: false,
         hasParams: false,
         help: 'This command, show the available functions',
         func: staticMessage.help
     },
     [COMMAND_LIST]: {
+        restPath: '/questionnaires',
         adminOnly: false,
         hasParams: false,
         help: 'Show what questionnaires you are a part of',
         func: questionnaire.listUser
     },
     [COMMAND_WHAT_NEXT]: {
+        restPath: '/stuck',//'/?'
         adminOnly: false,
         hasParams: false,
         help: 'What to do next? Repeats the question.',
         func: users.whatNext
     },
     [COMMAND_JOIN]: {
+        restPath: '/questionnaires/{id}/users',//POST
         adminOnly: false,
         hasParams: 'questionnaire_name',
         help: 'Join the list of users that the bot interacts with',
         func: users.join
     },
     [COMMAND_LEAVE]: {
+        restPath: '/questionnaires/{id}/users',//DELETE
         adminOnly: false,
         hasParams: 'questionnaire_name',
         help: 'Leave the list of users that the bot interacts with',
         func: users.leave
     },
     [COMMAND_START]: {
+        restPath: '/questionnaires/{id}/start',//POST
         adminOnly: false,
         hasParams: 'questionnaire_name',
         help: 'If enabled, start your questionnaire',
         func: questionnaire.startUser
     },
     [COMMAND_ADD_ANSWER]: {
+        restPath: '/questionnaires/{id}/answers',//POST
         adminOnly: false,
         hasParams: 'answer',
         help: 'Answer a pending question',
         func: questionnaire.addAnswer
     },
     [MODERATOR_COMMAND_INVITE]: {
+        restPath: '/questionnaires/{id}/users',//POST
         adminOnly: false,
         moderatorOnly:true,
         hasParams: 'questionnaire_name nick',
@@ -70,6 +78,7 @@ const COMMANDS = {
         func: users.invite
     },
     [ADMIN_COMMAND_USERS]: {
+        restPath: '/questionnaires/{id}/users',//GET
         adminOnly: true,
         hasParams: false,
         help: 'Shows a list of users',
@@ -77,6 +86,7 @@ const COMMANDS = {
         // func: 'userList'
     },
     [ADMIN_COMMAND_PENDING]: {
+        restPath: '/questionnaires/{id}/answers',//GET
         adminOnly: true,
         hasParams: 'nick (optional)',
         help: 'Shows a list of pending questionnaires, if a nick is supplied show the current answers for that user',
@@ -84,6 +94,7 @@ const COMMANDS = {
         // func: 'pending'
     },
     [ADMIN_COMMAND_KICK]: {
+        restPath: '/questionnaires/{id}/users/{userId}',//DELETE
         adminOnly: true,
         hasParams: 'nick',
         help: 'Remove a user from the list of users',
@@ -91,6 +102,7 @@ const COMMANDS = {
         // func: 'userKick'
     },
     [ADMIN_COMMAND_START]: {
+        restPath: '/questionnaires/{id}/start',
         adminOnly: true,
         moderatorOnly:true,
         hasParams: 'questionnaire_name nick (optional)',
@@ -99,6 +111,7 @@ const COMMANDS = {
         // func: 'adminStartQuestions'
     },
     [MODERATOR_COMMAND_ADD_QUESTION]: {
+        restPath: '/questionnaires/{id}/questions',//POST
         adminOnly: false,
         moderatorOnly: true,
         hasParams: 'questionnaire_name question',
