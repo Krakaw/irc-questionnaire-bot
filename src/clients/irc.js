@@ -41,9 +41,7 @@ class Irc {
         this.ircAdminNick = IRC_ADMIN_NICK;
         this.client = false;
 
-        this.create().connect(0, () => {
-            // ircClient._onMessage('Krakaw', 'bn-test-bot', '!daily-dev-bot start_all q1');
-        });
+        this.create().connect(0);
     }
 
     create(server, nick, options) {
@@ -79,9 +77,21 @@ class Irc {
         cb = cb || function () {
             console.log('Connected');
         };
-        this.client.connect(retryCount, cb)
+        let onConnect = () => {
+            this.joinAllChannels();
+            cb.apply(this);
+        };
+        this.client.connect(retryCount, onConnect)
     }
 
+    async joinAllChannels() {
+        let questionnaires = await this.db.questionnaire.findBy({}, {joinChannels: 1});
+        questionnaires.forEach(questionnaire => {
+            questionnaire.joinChannels.forEach(channel => {
+                this.client.join(channel);
+            });
+        });
+    }
 
     async processCommands(from, to, messageString) {
         //We must execute a command
@@ -151,6 +161,7 @@ class Irc {
         if (message === COMMAND_WHAT_NEXT) {
             return this.processCommands(from, to, `${COMMAND_INITIALIZER} ${message}`);
         }
+        console.log(from, to, message);
         //Run the COMMAND_ADD_ANSWER command
         return this.processCommands(from, to, `${COMMAND_INITIALIZER} ${COMMAND_ADD_ANSWER} ${message}`);
     }

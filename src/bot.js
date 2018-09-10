@@ -10,8 +10,18 @@ const db = new Database(NEDB_FILE_PATH);
 
 const Clients = require('./clients');
 Clients.forEach(Client => {
-    // new Client(db);
+    new Client(db);
 });
+// db.questionnaire.create({
+//     name: 'test',
+//     joinChannels: ['testchancacaw']
+// });
+// (async () => {
+//
+// let channels = await db.questionnaire.findBy({}, {joinChannels: 1});
+// console.log(channels);
+// })();
+
 //
 // db.questionnaire.addQuestion('Question?', 'q1').then(result => {
 //     console.log(result);

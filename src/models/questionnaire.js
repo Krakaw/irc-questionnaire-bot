@@ -22,9 +22,9 @@ class Questionnaire {
                 answers: [
                     //{nick: "", answers: {}, createdAt: ""}
                 ],
-                pending: [
+                pending: {
                     //nick: {startedAt: 0, answers: {}, lastAnsweredAt: 0}
-                ],
+                },
                 joinChannels: [],
                 usersCanSelfJoin: true,
                 usersCanSelfStart: true,
@@ -48,9 +48,7 @@ class Questionnaire {
                     message: 'Invalid name, cannot be blank or contain non a-zA-Z0-9_- characters'
                 });
             }
-            if (!questionnaire.adminUsers.length) {
-                return reject({errorType: 'missingAdmin', message: 'You must have at least one admin user'});
-            }
+
             this.db.insert(questionnaire, (err, newDoc) => {
                 if (err) {
                     return reject(err);
@@ -205,7 +203,6 @@ class Questionnaire {
             };
             //Get the questions from the questionnaire
             let result = await this.findBy({_id: questionnaireId}, {questions: 1}, true);
-
             result.questions.forEach(question => {
                 if (!answerBlock.answers.hasOwnProperty(question.question)) {
                     answerBlock.answers[question.question] = '';
@@ -213,8 +210,7 @@ class Questionnaire {
 
             });
 
-            let pendingKey = `pending.${nickOrData.nick}`;
-
+            let pendingKey = `pending.${answerBlock.nick}`;
             return this.db.update({_id: questionnaireId}, {$set: {[pendingKey]: answerBlock}}, {}, function (err, num) {
                 if (err) {
                     return reject(err);

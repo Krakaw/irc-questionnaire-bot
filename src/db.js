@@ -4,7 +4,12 @@ const DEBUG = process.env.DEBUG || false;
 
 module.exports = class Database {
     constructor(dbPath) {
-        this.questionnaireDb = this._createDatabase(`${dbPath}.questionnaire.nedb`);
+        this.questionnaireDb = this._createDatabase(`${dbPath}.questionnaire.nedb`, [
+            {
+                fieldName: 'name',
+                unique: true,
+            }
+        ]);
         this.questionnaire = new Questionnaire(this.questionnaireDb);
     }
 
@@ -41,10 +46,10 @@ module.exports = class Database {
                             }
                         }
                     },
-                    index
+                    ...index
                 };
 
-                db.ensureIndex(index, index.onload);
+                db.ensureIndex(indexParams, indexParams.onload);
             })
         }
         return db;

@@ -19,6 +19,7 @@ async function startUser(from, to, params) {
         let questionnaire = questionnaires[0];
         try {
             let result = await this.db.questionnaire.createPendingEntry(from, questionnaire._id);
+            console.log('Starting result', result);
             let question = questionnaire.questions.shift() || {};
             return {
                 silent: true,
