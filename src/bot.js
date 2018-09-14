@@ -12,22 +12,26 @@ const Clients = require('./clients');
 Clients.forEach(Client => {
     new Client(db);
 });
-// db.questionnaire.create({
-//     name: 'test',
-//     joinChannels: ['testchancacaw']
-// });
-// (async () => {
-//
+
+(async () => {
+    // await db.questionnaire.create({
+    //     name: 'test',
+    //
+    //     joinChannels: ['testchancacaw']
+    // });
+    // db.questionnaire.addQuestion('Question?', 'test').then(result => {
+    //     console.log(result);
+    // }).catch(e => {
+    //     console.error('Error', e);
+    // });
+    // let questions = await db.questionnaire.getQuestions('test');
+    // console.log(questions);
 // let channels = await db.questionnaire.findBy({}, {joinChannels: 1});
 // console.log(channels);
-// })();
+})();
 
 //
-// db.questionnaire.addQuestion('Question?', 'q1').then(result => {
-//     console.log(result);
-// }).catch(e => {
-//     console.error('Error', e);
-// });
+
 // db.questionnaire.findByNick({nick: 'bob', isModerator: false},null,  'vvt9r4NMMhVfqlet').then(result => {
 //     console.log(result);
 // }).catch(e => {

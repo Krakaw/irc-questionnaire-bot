@@ -110,6 +110,37 @@ async function addQuestion(from, to, params) {
 }
 
 /**
+ *
+ * @param from
+ * @param to
+ * @param params
+ * @returns {Promise<void>}
+ */
+async function listQuestions(from, to, params) {
+    let questionnaireName = params.shift();
+
+    if (!questionnaireName) {
+        throw {message: `You must specify a questionnaire name {${questionnaireName}}`};
+    }
+
+    let message;
+    try {
+        let questions = await this.db.questionnaire.getQuestions(questionnaireName);
+        message = questions;
+    }catch(e) {
+        console.error(e);
+        return {
+            message: `There was an error getting questions for ${questionnaireName}`,
+            to: from
+
+        }
+    }
+    return {
+        message,
+        to: from
+    }
+}
+/**
  * Sends the user the list of their questionnaires
  * @param user
  * @return {Promise<{message: string, to: *}>}
@@ -151,9 +182,10 @@ async function addAnswer(from, to, params) {
  * @type {{addAnswer: addAnswer, startUser: startUser, addQuestion: addQuestion, listUser: listUser, startAll: startAll}}
  */
 module.exports = {
-    addAnswer,
+    startAll,
     startUser,
-    addQuestion,
     listUser,
-    startAll
+    addAnswer,
+    addQuestion,
+    listQuestions
 };

@@ -94,6 +94,11 @@ class Questionnaire {
         });
     }
 
+    async getQuestions(questionnaireIdOrName) {
+        let questionnaire = await this.get(questionnaireIdOrName, {questions:1});
+        return questionnaire.questions;
+    }
+
     /**
      * Adds a user to a questionnaire
      * If they are the first user set them as a moderator
