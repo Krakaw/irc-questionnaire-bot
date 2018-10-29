@@ -1,22 +1,23 @@
 {
-  "name": "irc-questionnaire-chatbot",
-  "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
+  "name": "chat-bot",
+  "version": "0.0.0",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js"
+    "start": "DEBUG=chat-bot:* nodemon ./bin/www"
   },
-  "author": "Krakaw",
-  "license": "ISC",
   "dependencies": {
-    "dotenv": "^6.0.0",
-    "express": "^4.16.3",
-    "irc": "^0.5.2",
-    "nedb": "^1.8.0"
-  },
-  "devDependencies": {
-    "chai": "^4.1.2",
-    "mocha": "^5.2.0"
+    "cookie-parser": "~1.4.3",
+    "debug": "~2.6.9",
+    "dotenv": "^6.1.0",
+    "express": "~4.16.0",
+    "express-session": "^1.15.6",
+    "http-errors": "~1.6.2",
+    "jade": "~1.11.0",
+    "morgan": "~1.9.0",
+    "nedb": "^1.8.0",
+    "nedb-models": "^2.2.5",
+    "passport": "^0.4.0",
+    "passport-jwt": "^4.0.0",
+    "passport-local": "^1.0.0"
   }
 }
