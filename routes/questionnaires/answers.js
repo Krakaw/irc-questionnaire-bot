@@ -1,5 +1,5 @@
 var express = require('express');
-var router = express.Router();
+const router = express.Router({mergeParams: true});
 const asyncMiddleware = require('../../utils/asyncMiddleware');
 const Questionnaire = require('../../models/questionnaire');
 const Answer = require('../../models/answer');
@@ -11,7 +11,7 @@ router.get('/', asyncMiddleware(async function(req, res, next) {
 }));
 
 router.post('/', asyncMiddleware(async function(req, res, next) {
-	let answer = await Answer.create(req.params);
+	let answer = await Answer.create({...req.body, questionnaireId: req.params.id});
 	res.send(answer.toPOJO());
 }));
 

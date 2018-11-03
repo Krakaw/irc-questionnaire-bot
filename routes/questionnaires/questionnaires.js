@@ -1,5 +1,5 @@
 const express = require('express');
-const router = express.Router();
+const router = express.Router({mergeParams: true});
 const Questionnaire = require('../../models/questionnaire');
 const asyncMiddleware = require('../../utils/asyncMiddleware');
 /* GET questionnaires for a user. */
