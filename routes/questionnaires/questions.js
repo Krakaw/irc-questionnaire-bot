@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
-const asyncMiddleware = require('../utils/asyncMiddleware');
-const Questionnaire = require('../models/questionnaire');
+const asyncMiddleware = require('../../utils/asyncMiddleware');
+const Questionnaire = require('../../models/questionnaire');
 
 /* GET questions for a user. */
 router.get('/', asyncMiddleware(async function(req, res, next) {

@@ -21,7 +21,7 @@ User.defaults = () => {
 			email: "",
 			password: "",
 			serviceIdentification: [
-				//{service: "", name: ""}
+				//{service: "", identifyBy: ""}
 			],
 		}
 	};

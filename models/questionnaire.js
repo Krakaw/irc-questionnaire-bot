@@ -55,7 +55,28 @@ class Questionnaire extends Model {
 	}
 
 	async addUser(user = {}) {
-		
+		user = {
+			...user,
+			...{
+				userId: "",
+				isModerator: false,
+				pendingAccept: false,
+				active: true,
+			}
+		};
+		if (this.users.filter(item => item.userId).length) {
+			throw {message: "User is already part of this questionnaire"};
+		}
+		this.users.push(user);
+		return await this.save();
+	}
+
+	async updateUser(userId, user = {}) {
+		throw {message: "Not implemented yet"};
+	}
+
+	async deleteUser(userId) {
+		throw {message: "Not implemented yet"};
 	}
 
 }
