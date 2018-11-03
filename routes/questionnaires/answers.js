@@ -7,12 +7,12 @@ const Answer = require('../../models/answer');
 /* GET questions for a user. */
 router.get('/', asyncMiddleware(async function(req, res, next) {
 	let answers = await Answer.find({questionnaireId: req.params.id, ...req.params.query});
-	res.send(answers);
+	res.send(answers.toPOJO());
 }));
 
 router.post('/', asyncMiddleware(async function(req, res, next) {
 	let answer = await Answer.create(req.params);
-	res.send(answer);
+	res.send(answer.toPOJO());
 }));
 
 // router.put('/:userId', asyncMiddleware(async function(req,res,next) {

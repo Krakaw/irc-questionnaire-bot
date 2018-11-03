@@ -12,18 +12,18 @@ router.get('/', asyncMiddleware(async function(req, res, next) {
 router.post('/', asyncMiddleware(async function(req, res, next) {
 	let questionnaire = await Questionnaire.findOne({_id: req.params.id}, {users: 1});
 	let response = await questionnaire.addUser(req.body);
-	res.send(response);
+	res.send(response.toPOJO());
 }));
 
 router.put('/:userId', asyncMiddleware(async function(req,res,next) {
 	let questionnaire = await Questionnaire.findOne({_id: req.params.id}, {users: 1});
 	let response = await questionnaire.updateUser(req.params.userId, req.body);
-	res.send(response);
+	res.send(response.toPOJO());
 }));
 
 router.delete('/:userId', asyncMiddleware(async function(req,res,next) {
 	let questionnaire = await Questionnaire.findOne({_id: req.params.id}, {users: 1});
 	let response = await questionnaire.deleteUser(req.params.userId);
-	res.send(response);
+	res.send(response.toPOJO());
 }));
 module.exports = router;
