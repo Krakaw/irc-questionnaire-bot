@@ -31,4 +31,5 @@ router.delete('/:index', asyncMiddleware(async function(req,res,next) {
 	let response = await questionnaire.deleteQuestion(req.params.index);
 	res.send(response.toPOJO());
 }));
+
 module.exports = router;

@@ -1,21 +1,21 @@
 require("dotenv").config();
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+const createError = require('http-errors');
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const logger = require('morgan');
 // var session = require("express-session");
 // var passport = require("passport");
 // var	bodyParser = require("body-parser");
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-var questionnairesRouter = require('./routes/questionnaires/questionnaires');
-var questionsRouter = require('./routes/questionnaires/questions');
-var questionnaireUsersRouter = require('./routes/questionnaires/users');
-var questionnaireAnswersRouter = require('./routes/questionnaires/answers');
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
+const questionnairesRouter = require('./routes/questionnaires/questionnaires');
+const questionsRouter = require('./routes/questionnaires/questions');
+const questionnaireUsersRouter = require('./routes/questionnaires/users');
+const questionnaireAnswersRouter = require('./routes/questionnaires/answers');
 
-var app = express();
+const app = express();
 
 // view engine setup
 // app.set('views', path.join(__dirname, 'views'));
