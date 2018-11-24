@@ -4,7 +4,7 @@ const asyncMiddleware = require('../../utils/asyncMiddleware');
 const Questionnaire = require('../../models/questionnaire');
 const Answer = require('../../models/answer');
 
-/* GET questions for a user. */
+/* GET ansers for a user. */
 router.get('/', asyncMiddleware(async function(req, res, next) {
 	let answers = await Answer.find({questionnaireId: req.params.id, ...req.params.query});
 	res.send(answers.toPOJO());

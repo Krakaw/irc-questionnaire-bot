@@ -24,4 +24,9 @@ router.put('/:id', asyncMiddleware(async function (req, res, next) {
 	res.send(questionnaire.toPOJO());
 }));
 
+router.post('/:id/start', asyncMiddleware(async function(req, res, next){
+	let questionnaire = await Questionnaire.findOne({_id: req.params.id});
+
+}));
+
 module.exports = router;
