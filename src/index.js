@@ -108,6 +108,9 @@ if (!IRC_SERVER || !IRC_NICK || !IRC_ADMIN_NICK || !IRC_PUBLIC_CHANNEL) {
     process.exit(1);
 }
 
+let triggerOnStart = process.argv.pop() === 'trigger';
+
+
 const users = readUsers();
 const questions = readQuestions();
 const responses = {}; //{user: {started: new Date(), answers: {}}}
@@ -193,6 +196,9 @@ client.addListener('error', function (message) {
 
 client.connect(0, () => {
     console.log('Connected');
+    if (triggerOnStart) {
+        COMMANDS[ADMIN_COMMAND_START].func(IRC_ADMIN_NICK, IRC_NICK, null);
+    }
 });
 
 /**
