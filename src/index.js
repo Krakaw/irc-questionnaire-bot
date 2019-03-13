@@ -197,11 +197,10 @@ client.addListener('error', function (message) {
 client.connect(0, () => {
     console.log('Connected');
     if (triggerOnStart) {
+        console.log('Starting questionnaire automatically in 5 seconds');
         setTimeout(() => {
-            console.log('Starting questionnaire automatically')
-            COMMANDS[ADMIN_COMMAND_START].func(IRC_ADMIN_NICK, IRC_NICK, null);
+            processCommands(IRC_ADMIN_NICK, IRC_NICK, `${COMMAND_INITIALIZER} start`);
         }, 5000);
-
     }
 });
 
